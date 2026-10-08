@@ -15,6 +15,16 @@
 (async()=>{
  const auth=await fetch("/api/admin/me"); if(!auth.ok){location.href="/admin.html";return}
  const result=document.querySelector("#result");
+ const result=document.querySelector("#result");
+ function esc(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+function show(cls,title,body){
  function show(cls,title,body){result.className="result "+cls;result.innerHTML="<h2>"+title+"</h2><p>"+body+"</p>"}
  function scanned(decoded){
    if(window.busy)return; window.busy=true;
