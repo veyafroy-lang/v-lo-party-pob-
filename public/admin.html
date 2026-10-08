@@ -1,1 +1,61 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administration — VELO PARTY POBE</title><link rel="stylesheet" href="/styles.css"></head>
+<body>
+<header class="container nav"><a class="brand" href="/"><img src="/logo.jpeg" alt="">VELO PARTY POBE</a><button id="logout" class="btn btn-secondary">Déconnexion</button></header>
+<main class="container">
+<section id="login" class="panel form">
+ <h1>🔐 Administration</h1>
+ <form id="loginForm">
+  <label>Email</label><input id="email" type="email" value="davicon.bj@gmail.com" required>
+  <label>Mot de passe</label><input id="password" type="password" required>
+  <button class="btn btn-primary" style="width:100%">Connexion</button>
+ </form><div id="loginMsg"></div>
+</section>
 
+<section id="dashboard" class="hidden">
+ <div class="top"><h1>Tableau de bord</h1><p class="muted">Génère les codes qui seront remis aux visiteurs.</p></div>
+ <div class="grid">
+  <div class="card"><div class="muted">Codes générés</div><div id="totalCodes" class="stat">0</div></div>
+  <div class="card"><div class="muted">Codes utilisés</div><div id="usedCodes" class="stat">0</div></div>
+  <div class="card"><div class="muted">Tickets</div><div id="totalTickets" class="stat">0</div></div>
+  <div class="card"><div class="muted">Entrées validées</div><div id="checkedIn" class="stat">0</div></div>
+ </div>
+ <section class="panel form" style="margin-top:20px">
+  <h2>Générer des codes</h2>
+  <form id="codeForm">
+   <label>Tarif</label>
+   <select id="price">
+    <option value="2000">Entrée — 2 000 FCFA</option>
+    <option value="5000">VIP — 5 000 FCFA</option>
+    <option value="10000">VIP — 10 000 FCFA</option>
+    <option value="15000">VIP — 15 000 FCFA</option>
+    <option value="20000">VIP — 20 000 FCFA</option>
+   </select>
+   <label>Quantité</label><input id="quantity" type="number" min="1" max="500" value="10">
+   <button class="btn btn-primary" style="width:100%">Générer</button>
+  </form>
+  <div id="codeResult"></div>
+ </section>
+ <section class="panel">
+  <h2>Derniers tickets</h2>
+  <div class="table-wrap"><table class="table"><thead><tr><th>Ticket</th><th>Nom</th><th>Type</th><th>Prix</th><th>Créé</th><th>Entrée</th></tr></thead><tbody id="tickets"></tbody></table></div>
+ </section>
+</section>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+async function check(){const r=await fetch("/api/admin/me"); if(r.ok){$("#login").classList.add("hidden");$("#dashboard").classList.remove("hidden");load();}else{$("#login").classList.remove("hidden");$("#dashboard").classList.add("hidden")}}
+async function load(){
+ const s=await (await fetch("/api/admin/stats")).json();
+ ["totalCodes","usedCodes","totalTickets","checkedIn"].forEach(k=>$("#"+k).textContent=s[k]);
+ const rows=await (await fetch("/api/admin/tickets")).json();
+ $("#tickets").innerHTML=rows.map(t=>`<tr><td>${esc(t.ticket_number)}</td><td>${esc(t.holder_name)}</td><td>${esc(t.ticket_type)}</td><td>${Number(t.price).toLocaleString("fr-FR")}</td><td>${new Date(t.created_at).toLocaleString("fr-FR")}</td><td>${t.checked_in_at?"✅":"—"}</td></tr>`).join("");
+}
+$("#loginForm").addEventListener("submit",async e=>{e.preventDefault();const r=await fetch("/api/admin/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:$("#email").value,password:$("#password").value})});const d=await r.json();if(!r.ok){$("#loginMsg").className="notice error";$("#loginMsg").textContent=d.error;return}check()});
+$("#logout").addEventListener("click",async()=>{await fetch("/api/admin/logout",{method:"POST"});check()});
+$("#codeForm").addEventListener("submit",async e=>{e.preventDefault();const r=await fetch("/api/admin/codes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({price:$("#price").value,quantity:$("#quantity").value})});const d=await r.json();if(!r.ok){$("#codeResult").className="notice error";$("#codeResult").textContent=d.error;return}$("#codeResult").className="notice success";$("#codeResult").innerHTML="<b>Codes générés :</b><br><br>"+d.codes.map(x=>`<div style="font-family:monospace;font-size:18px;margin:5px 0">${x}</div>`).join("")+"<br><span class='small'>Copie/Imprime cette liste maintenant : les codes complets ne seront pas réaffichés après cette génération.</span>";load()});
+check();
+</script>
+</body></html>
