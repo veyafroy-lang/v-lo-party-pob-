@@ -15,7 +15,6 @@
 (async()=>{
  const auth=await fetch("/api/admin/me"); if(!auth.ok){location.href="/admin.html";return}
  const result=document.querySelector("#result");
- const result=document.querySelector("#result");
  function esc(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
