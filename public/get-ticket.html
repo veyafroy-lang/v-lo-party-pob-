@@ -1,1 +1,41 @@
-
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Obtenir mon ticket — VELO PARTY POBE</title><link rel="stylesheet" href="/styles.css"></head>
+<body>
+<header class="container nav"><a class="brand" href="/"><img src="/logo.jpeg" alt="">VELO PARTY POBE</a><a class="btn btn-secondary" href="/">Accueil</a></header>
+<main class="container">
+<section class="panel form">
+  <h1>🎟️ Obtenir mon ticket</h1>
+  <p class="muted">Saisis le code unique qui t'a été remis par l'organisation.</p>
+  <form id="form">
+    <label>Code unique</label>
+    <input id="code" required placeholder="VPB-XXXXXXXX" autocomplete="off">
+    <label>Nom du bénéficiaire</label>
+    <input id="holderName" required maxlength="100" placeholder="Nom et prénom">
+    <button class="btn btn-primary" style="width:100%" type="submit">Continuer</button>
+  </form>
+  <div id="msg"></div>
+</section>
+<section id="result" class="panel hidden ticket-preview">
+  <h2>✅ Ticket généré</h2>
+  <p id="details"></p>
+  <img id="ticketImage" alt="Ticket VELO PARTY POBE">
+  <a id="download" class="btn btn-primary" download>Télécharger mon ticket</a>
+</section>
+</main>
+<script>
+const form=document.querySelector("#form"),msg=document.querySelector("#msg"),result=document.querySelector("#result");
+form.addEventListener("submit",async e=>{
+ e.preventDefault(); msg.className="notice"; msg.textContent="Vérification...";
+ const r=await fetch("/api/ticket/redeem",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:code.value,holderName:holderName.value})});
+ const data=await r.json();
+ if(!r.ok){msg.className="notice error";msg.textContent=data.error;return}
+ msg.className="notice success";msg.textContent="Code accepté. Ton ticket est prêt.";
+ const t=data.ticket;
+ details.textContent=`${t.ticketType} — ${Number(t.price).toLocaleString("fr-FR")} FCFA — ${t.ticketNumber}`;
+ const url="/api/ticket/"+encodeURIComponent(t.token)+"/image";
+ ticketImage.src=url; download.href=url; result.classList.remove("hidden");
+ form.reset();
+});
+</script>
+</body></html>
