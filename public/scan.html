@@ -25,7 +25,7 @@
        (t.checked_in_at?"":`<br><br><button id="validate" class="btn btn-primary">VALIDER L'ENTRÉE</button>`));
      const b=document.querySelector("#validate");
      if(b)b.onclick=async()=>{const r=await fetch("/api/checkin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:decoded})});const d=await r.json();if(r.ok)show("valid","🟢 ENTRÉE VALIDÉE",`${esc(d.ticket.holderName)} — ${esc(d.ticket.ticketType)}<br>${esc(d.ticket.ticketNumber)}`);else show("invalid","❌ "+(d.error||"Erreur"),"");window.busy=false};
-   }).catch(()=>{show("invalid","❌ Erreur réseau","Réessaie.");window.busy=false});
+   }).catch((e)=>{console.error("SCAN ERROR:",e);show("invalid","❌ Erreur","Voir la console (F12).");window.busy=false});
  }
  const scanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:260,height:260}},false);
  scanner.render(scanned,()=>{});
