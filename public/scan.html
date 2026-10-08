@@ -1,1 +1,34 @@
-
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Contrôle — VELO PARTY POBE</title><link rel="stylesheet" href="/styles.css"><script src="https://unpkg.com/html5-qrcode" defer></script></head>
+<body>
+<header class="container nav"><a class="brand" href="/"><img src="/logo.jpeg" alt="">VELO PARTY POBE</a><a class="btn btn-secondary" href="/admin.html">Administration</a></header>
+<main class="container">
+<section class="panel scan-box">
+ <h1>📷 Contrôle des tickets</h1>
+ <p class="muted">Connecte-toi comme administrateur pour valider les entrées.</p>
+ <div id="reader"></div>
+ <div id="result"></div>
+</section>
+</main>
+<script>
+(async()=>{
+ const auth=await fetch("/api/admin/me"); if(!auth.ok){location.href="/admin.html";return}
+ const result=document.querySelector("#result");
+ function show(cls,title,body){result.className="result "+cls;result.innerHTML="<h2>"+title+"</h2><p>"+body+"</p>"}
+ function scanned(decoded){
+   if(window.busy)return; window.busy=true;
+   fetch("/api/ticket/"+encodeURIComponent(decoded)).then(r=>r.json()).then(t=>{
+     if(t.error){show("invalid","❌ TICKET INVALIDE",t.error);window.busy=false;return}
+     show(t.checked_in_at?"invalid":"valid",t.checked_in_at?"🔴 TICKET DÉJÀ UTILISÉ":"🟢 TICKET VALIDE",
+       `${esc(t.holder_name)} — ${esc(t.ticket_type)} — ${Number(t.price).toLocaleString("fr-FR")} FCFA<br>Ticket : ${esc(t.ticket_number)}`+
+       (t.checked_in_at?"":`<br><br><button id="validate" class="btn btn-primary">VALIDER L'ENTRÉE</button>`));
+     const b=document.querySelector("#validate");
+     if(b)b.onclick=async()=>{const r=await fetch("/api/checkin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token:decoded})});const d=await r.json();if(r.ok)show("valid","🟢 ENTRÉE VALIDÉE",`${esc(d.ticket.holderName)} — ${esc(d.ticket.ticketType)}<br>${esc(d.ticket.ticketNumber)}`);else show("invalid","❌ "+(d.error||"Erreur"),"");window.busy=false};
+   }).catch(()=>{show("invalid","❌ Erreur réseau","Réessaie.");window.busy=false});
+ }
+ const scanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:260,height:260}},false);
+ scanner.render(scanned,()=>{});
+})();
+</script>
+</body></html>
