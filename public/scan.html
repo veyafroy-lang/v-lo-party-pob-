@@ -1,5 +1,56 @@
+<!doctype html>
+<html lang="fr">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <title>Contrôle — VELO PARTY POBE</title>
+
+  <link rel="stylesheet" href="/styles.css">
+
+  <!-- Lecteur QR -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+
+<body>
+
+<header class="container nav">
+  <a class="brand" href="/">
+    <img src="/logo.jpeg" alt="">
+    VELO PARTY POBE
+  </a>
+
+  <a class="btn btn-secondary" href="/admin.html">
+    Administration
+  </a>
+</header>
+
+<main class="container">
+
+  <section class="panel scan-box">
+
+    <h1>📷 Contrôle des tickets</h1>
+
+    <p class="muted">
+      Connecte-toi comme administrateur pour valider les entrées.
+    </p>
+
+    <div id="reader"></div>
+
+    <div id="result"></div>
+
+  </section>
+
+</main>
+
 <script>
 (async () => {
+
+  /* =========================
+     VÉRIFICATION ADMIN
+     ========================= */
+
   const auth = await fetch("/api/admin/me");
 
   if (!auth.ok) {
@@ -7,7 +58,17 @@
     return;
   }
 
+
+  /* =========================
+     ÉLÉMENTS DE LA PAGE
+     ========================= */
+
   const result = document.querySelector("#result");
+
+
+  /* =========================
+     PROTECTION DU TEXTE
+     ========================= */
 
   function esc(value) {
     return String(value ?? "")
@@ -18,112 +79,249 @@
       .replaceAll("'", "&#039;");
   }
 
+
+  /* =========================
+     AFFICHAGE DU RÉSULTAT
+     ========================= */
+
   function show(cls, title, body) {
     result.className = "result " + cls;
-    result.innerHTML = "<h2>" + title + "</h2><p>" + body + "</p>";
+
+    result.innerHTML =
+      "<h2>" + title + "</h2>" +
+      "<p>" + body + "</p>";
   }
 
+
+  /* =========================
+     TRAITEMENT DU QR CODE
+     ========================= */
+
   async function scanned(decoded) {
-    if (window.busy) return;
+
+    if (window.busy) {
+      return;
+    }
+
     window.busy = true;
 
     try {
+
+      /* Recherche du ticket */
+
       const response = await fetch(
         "/api/ticket/" + encodeURIComponent(decoded)
       );
 
       const ticket = await response.json();
 
+
+      /* Ticket inexistant */
+
       if (ticket.error) {
-        show("invalid", "❌ TICKET INVALIDE", esc(ticket.error));
+
+        show(
+          "invalid",
+          "❌ TICKET INVALIDE",
+          esc(ticket.error)
+        );
+
         window.busy = false;
         return;
       }
 
+
+      /* Vérification si déjà utilisé */
+
       const alreadyUsed = !!ticket.checked_in_at;
+
+
+      /* Affichage du ticket */
 
       show(
         alreadyUsed ? "invalid" : "valid",
+
         alreadyUsed
           ? "🔴 TICKET DÉJÀ UTILISÉ"
           : "🟢 TICKET VALIDE",
-        `${esc(ticket.holder_name)} — ${esc(ticket.ticket_type)} — ${Number(ticket.price).toLocaleString("fr-FR")} FCFA<br>
-         Ticket : ${esc(ticket.ticket_number)}
-         ${
-           alreadyUsed
-             ? ""
-             : '<br><br><button id="validate" class="btn btn-primary">VALIDER L\'ENTRÉE</button>'
-         }`
+
+        `${esc(ticket.holder_name)}
+        — ${esc(ticket.ticket_type)}
+        — ${Number(ticket.price).toLocaleString("fr-FR")} FCFA
+
+        <br>
+
+        Ticket :
+        ${esc(ticket.ticket_number)}
+
+        ${
+          alreadyUsed
+            ? ""
+            : `
+              <br><br>
+
+              <button
+                id="validate"
+                class="btn btn-primary">
+                VALIDER L'ENTRÉE
+              </button>
+            `
+        }`
       );
+
+
+      /* =========================
+         BOUTON DE VALIDATION
+         ========================= */
 
       const button = document.querySelector("#validate");
 
+
       if (button) {
+
         button.onclick = async () => {
+
           try {
-            const response = await fetch("/api/checkin", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                token: decoded
-              })
-            });
 
-            const data = await response.json();
+            const checkinResponse = await fetch(
+              "/api/checkin",
+              {
+                method: "POST",
 
-            if (response.ok) {
+                headers: {
+                  "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                  token: decoded
+                })
+              }
+            );
+
+
+            const data = await checkinResponse.json();
+
+
+            /* Entrée validée */
+
+            if (checkinResponse.ok) {
+
               show(
                 "valid",
                 "🟢 ENTRÉE VALIDÉE",
-                `${esc(data.ticket.holderName)} — ${esc(data.ticket.ticketType)}<br>${esc(data.ticket.ticketNumber)}`
+
+                `${esc(data.ticket.holderName)}
+                — ${esc(data.ticket.ticketType)}
+
+                <br>
+
+                ${esc(data.ticket.ticketNumber)}`
               );
-            } else {
+
+            }
+
+            /* Erreur de validation */
+
+            else {
+
               show(
                 "invalid",
                 "❌ " + (data.error || "Erreur"),
                 ""
               );
+
             }
-          } catch (error) {
-            console.error("CHECKIN ERROR:", error);
+
+          }
+
+          catch (error) {
+
+            console.error(
+              "CHECKIN ERROR:",
+              error
+            );
+
             show(
               "invalid",
               "❌ Erreur réseau",
               "Impossible de valider le ticket."
             );
+
           }
 
+
           window.busy = false;
+
         };
-      } else {
-        window.busy = false;
+
       }
 
-    } catch (error) {
-      console.error("SCAN ERROR:", error);
+      else {
+
+        window.busy = false;
+
+      }
+
+    }
+
+    catch (error) {
+
+      console.error(
+        "SCAN ERROR:",
+        error
+      );
+
       show(
         "invalid",
         "❌ Erreur",
         "Impossible de lire le ticket."
       );
+
       window.busy = false;
+
     }
+
   }
+
+
+  /* =========================
+     LANCEMENT DU SCANNER
+     ========================= */
+
+  if (typeof Html5QrcodeScanner === "undefined") {
+
+    show(
+      "invalid",
+      "❌ Scanner indisponible",
+      "Le lecteur QR n'a pas pu être chargé."
+    );
+
+    return;
+  }
+
 
   const scanner = new Html5QrcodeScanner(
     "reader",
     {
       fps: 10,
+
       qrbox: {
         width: 260,
         height: 260
       }
     },
+
     false
   );
 
-  scanner.render(scanned, () => {});
+
+  scanner.render(
+    scanned,
+    () => {}
+  );
+
 })();
 </script>
+
+</body>
+</html>
